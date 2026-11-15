@@ -4,6 +4,7 @@ from collections import deque
 from contextlib import suppress
 from datetime import datetime, timezone
 import json
+import logging
 import os
 from pathlib import Path
 import subprocess
@@ -37,10 +38,11 @@ class Simulation:
 
     def _offline_nodes(self):
         self.nodes = {n.id: {"id": n.id, "state": "RELEASED", "clock": 0,
+                           "host": n.host, "port": n.port,
                            "request_id": None, "request_timestamp": None, "replies": [],
                            "expected_replies": len(self.config.nodes) - 1, "deferred": [],
                            "completed": 0, "sent": {"REQUEST": 0, "REPLY": 0},
-                           "online": False, "network_errors": {}}
+                           "online": False, "network_errors": {}, "connection_error": None}
                       for n in self.config.nodes}
 
     def add_event(self, event: dict) -> None:
@@ -62,10 +64,13 @@ class Simulation:
         return response
 
     async def poll_one(self, node_id: int) -> None:
+        address = next(n for n in self.config.nodes if n.id == node_id)
         try:
             old_boot, cursor = self.cursors.get(node_id, ("", 0))
             response = await self.command(node_id, "STATUS", after=cursor)
             status = response["node"]
+            if status["id"] != node_id or status["expected_replies"] != len(self.config.nodes) - 1:
+                raise ValueError("Node trả về ID hoặc số thành viên khác cấu hình dashboard. Dùng cùng file và khởi động lại toàn phiên.")
             if old_boot and status["boot_id"] != old_boot:
                 # An uncoordinated node restart violates the original failure assumptions.
                 self.error = f"P{node_id} đã khởi động lại trong phiên. Dừng và reset toàn bộ membership."
@@ -80,9 +85,17 @@ class Simulation:
                 self.add_event(event)
                 cursor = event["seq"]
             self.cursors[node_id] = status["boot_id"], cursor
-            self.nodes[node_id] = {**status, "online": True}
+            self.nodes[node_id] = {**status, "online": True, "host": address.host,
+                                   "port": address.port, "connection_error": None}
         except (OSError, TimeoutError, ValueError) as exc:
-            self.nodes[node_id] = {**self.nodes[node_id], "online": False, "connection_error": str(exc)}
+            if isinstance(exc, TimeoutError):
+                reason = "Hết 2 giây chờ kết nối/phản hồi. Kiểm tra IP, node đang chạy và firewall."
+            elif isinstance(exc, ConnectionRefusedError):
+                reason = "Kết nối bị từ chối. Kiểm tra node đã mở đúng cổng."
+            else:
+                reason = str(exc) or type(exc).__name__
+            self.nodes[node_id] = {**self.nodes[node_id], "online": False,
+                                   "connection_error": f"{address.host}:{address.port} — {reason}"}
 
     async def refresh(self) -> None:
         async with self.refresh_lock:
@@ -95,6 +108,9 @@ class Simulation:
             await asyncio.sleep(0.2)
 
     async def open(self) -> None:
+        logging.getLogger(__name__).info("Observer config=%s session=%s mode=%s members=%s",
+                                        self.config_path.resolve(), self.config.session_id,
+                                        self.config.mode, len(self.config.nodes))
         self.poll_task = asyncio.create_task(self.poll())
 
     async def start(self) -> dict:
@@ -195,9 +211,10 @@ class Simulation:
         nodes = sorted(self.nodes.values(), key=lambda n: n["id"])
         online = sum(n["online"] for n in nodes)
         owners = [n["id"] for n in nodes if n["online"] and n["state"] == "HELD"]
+        running = self.running or (self.config.mode == "external" and online > 0)
         return {"epoch": self.epoch, "session_id": self.config.session_id, "mode": self.config.mode,
-                "running": self.running or (self.config.mode == "external" and online > 0),
-                "status": "DEGRADED" if self.running and online < len(nodes) else "RUNNING" if online else "STOPPED",
+                "config_path": str(self.config_path.resolve()), "running": running,
+                "status": "DEGRADED" if running and online < len(nodes) else "RUNNING" if running else "STOPPED",
                 "nodes": nodes, "active_nodes": online, "member_count": len(nodes),
                 "owners": owners, "requests": sum(n["sent"]["REQUEST"] for n in nodes),
                 "replies": sum(n["sent"]["REPLY"] for n in nodes),

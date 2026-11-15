@@ -112,6 +112,8 @@ Nếu sửa frontend rồi chạy bản demo đóng gói, nhớ `npm.cmd run bui
 
 ## Chạy node độc lập / LAN
 
+Nhóm 4 thành viên: xem [hướng dẫn LAN 4 node](docs/lan-4nodes.md). Dùng `python scripts/start_dashboard.py --config config/nodes.lan.4nodes.json --port 8010` để chọn trực tiếp đúng file cấu hình, tránh dùng nhầm giá trị RA_CONFIG từ terminal cũ.
+
 ```powershell
 # Mỗi terminal/máy chọn một ID khác nhau, cùng một file cấu hình
 .\.venv\Scripts\python.exe scripts/start_node.py --id 1 --config config/nodes.lan.example.json

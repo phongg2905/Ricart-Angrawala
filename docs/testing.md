@@ -43,12 +43,12 @@ State machine không biết bộ kiểm tra audit; không có central lock trong
 
 Windows, Python 3.11, Node.js 22.20.0. Các thư viện Python sẵn có đã dùng: FastAPI 0.115.0, Pydantic 2.13.5, Uvicorn 0.30.6, pytest 8.3.2, pytest-asyncio 0.24.0, httpx 0.28.1. Frontend npm lockfile được lưu trong repository; build dùng Vite 6.4.6.
 
-Kết quả chạy cuối sẽ được ghi ở `docs/test-results.md` sau khi hoàn tất các lệnh kiểm chứng. Không dùng log mẫu làm bằng chứng.
+Kết quả thực thi và phạm vi kiểm chứng được ghi ở [test-results.md](test-results.md). Đợt sửa LAN 15/11/2026: 45 unit/integration tests đạt, frontend build đạt; HTTP/WebSocket xác nhận 3/4 node trên LAN, P3 chưa phản hồi cổng 5003.
 
 ## Phạm vi chưa kiểm chứng
 
 - Không cài/chạy Playwright theo yêu cầu người dùng; giao diện có checklist tự test. Build TypeScript/Vite không thay thế kiểm tra bằng trình duyệt.
-- Chưa chạy trên nhiều máy LAN vật lý hoặc trên Linux trong phiên bàn giao.
+- Đã kiểm tra monitoring qua LAN với P1/P2/P4. Chưa xác nhận một phiên CS khỏe mạnh trên đủ bốn máy; Linux chưa chạy kiểm chứng.
 - Không kiểm thử phục hồi lỗi, membership động hoặc mạng Byzantine vì không triển khai các khả năng này.
 
 ## Khi có test lỗi

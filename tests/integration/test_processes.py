@@ -9,7 +9,7 @@ from tests.cluster import Cluster
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.parametrize("count", [3, 5])
+@pytest.mark.parametrize("count", [3, 4, 5])
 async def test_single_request_actual_processes_and_complexity(tmp_path, count):
     async with Cluster(tmp_path, count) as c:
         initial = await c.statuses()
@@ -22,7 +22,7 @@ async def test_single_request_actual_processes_and_complexity(tmp_path, count):
         c.assert_safety(1)
 
 
-@pytest.mark.parametrize("count", [3, 5])
+@pytest.mark.parametrize("count", [3, 4, 5])
 async def test_all_competing_and_progress(tmp_path, count):
     async with Cluster(tmp_path, count) as c:
         await asyncio.gather(*(c.command(i, "REQUEST_CS", duration=0.06) for i in c.ports))

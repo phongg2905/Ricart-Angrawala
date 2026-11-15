@@ -61,6 +61,7 @@ export default function App() {
         {(error || s?.error) && <div className="error-banner" role="alert"><Activity size={17}/><span>{error || s?.error}</span>{error && <button aria-label="Đóng thông báo" onClick={dismiss}><X size={17}/></button>}</div>}
         {!connected && <div className="notice"><Wifi size={15}/> Mất kết nối giám sát. Các node tiếp tục chạy độc lập; dữ liệu hiển thị có thể đã cũ.</div>}
         {connected && s?.status === 'DEGRADED' && <div className="notice"><Wifi size={15}/> Thiếu node trong membership. Node còn hoạt động vẫn có thể gửi yêu cầu nhưng phải chờ đủ quyền; timeout không tự cấp quyền.</div>}
+        {connected && nodes.some(n => !n.online && n.connection_error) && <div className="node-diagnostics" role="status"><strong>Node chưa kết nối được</strong><ul>{nodes.filter(n => !n.online && n.connection_error).map(n => <li key={n.id}><b>P{n.id}</b> · {n.connection_error}</li>)}</ul><p>Đổi IP hoặc file cấu hình cần khởi động lại các tiến trình liên quan. Mở được dashboard chưa có nghĩa cổng TCP của node đã mở.</p></div>}
 
         {tab !== 'overview' ? <Educational tab={tab} onBack={() => setTab('overview')}/> : <>
         <section className="metrics-grid" aria-label="Thống kê phiên">
@@ -72,6 +73,7 @@ export default function App() {
 
         <div className="primary-grid">
           <section className="panel network-panel"><div className="panel-heading"><div><h2><NetworkIcon size={17}/> Mạng tiến trình</h2><p>Các node giao tiếp trực tiếp qua TCP</p></div><span className={`status-chip ${s?.running ? 'live' : ''}`}><i className="dot"/>{s?.status === 'DEGRADED' ? 'THIẾU NODE' : s?.running ? 'ĐANG CHẠY' : 'CHƯA KHỞI ĐỘNG'}</span></div>
+            {s && <div className="session-info"><span>Phiên <b className="mono">{s.session_id}</b> · {s.member_count} node</span><span title={s.config_path}>Cấu hình: {s.config_path?.split(/[\\/]/).pop() ?? '—'}</span></div>}
             <Network nodes={nodes} selected={selected} onSelect={setSelected} events={events}/>
             <div className="state-legend"><span><i className="dot gray"/> RELEASED <em>Thả</em></span><span><i className="dot amber"/> WANTED <em>Muốn</em></span><span><i className="dot mint"/> HELD <em>Giữ</em></span><span className="legend-note"><Activity size={12}/> Animation từ sự kiện quan sát</span></div>
           </section>
